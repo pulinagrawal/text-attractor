@@ -2,10 +2,12 @@
 <project version="4">
   <component name="WebResourcesPaths">
     <contentEntries>
-      <entry url="file://$PROJECT_DIR$">
+      <entry url="file:///opt/ros/jade/lib/python2.7/dist-packages">
         <entryData>
           <resourceRoots>
-            <path value="file://$PROJECT_DIR$" />
+            <path value="file:///opt/ros/jade/lib/python2.7/dist-packages" />
+            <path value="file://$PROJECT_DIR$/../../../lidapy-framework/src" />
+            <path value="file://$PROJECT_DIR$/../../devel/lib/python2.7/dist-packages" />
           </resourceRoots>
         </entryData>
       </entry>
