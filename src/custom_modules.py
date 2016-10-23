@@ -46,7 +46,8 @@ class TextAttractorEnvironment(FrameworkModule):
         super(TextAttractorEnvironment, self).add_publisher(TEXTSCAN_TOPIC)
 
     def call(self):
-        self.publish(TEXTSCAN_TOPIC, "attract text")
+        msg = self.config.get_param(ENVIRONMENT_MODULE, "message")
+        self.publish(TEXTSCAN_TOPIC, msg)
 
 
 class BasicSensoryMemory(SensoryMemory):
@@ -67,22 +68,28 @@ class BasicSensoryMemory(SensoryMemory):
         text = self.get_next_msg(TEXTSCAN_TOPIC)
 
         if text is not None:
-            for x in text:
+            for x in text.data:
                 self.publish(DETECTED_FEATURES_TOPIC, CognitiveContent(x))
 
 class TextAttractorWorkspace(Workspace):
-    nodes = {}
+
+    def __init__(self, **kwargs):
+        super(TextAttractorWorkspace, self).__init__(**kwargs)
+        self.nodes = {"a": .0001}
 
     def call(self):
         percept = self.get_next_msg(PERCEPTS_TOPIC)
 
-        if self.nodes[percept] is KeyError:
-            self.nodes[percept] = .1
+        if percept is not None:
+            if self.nodes[percept.value] is KeyError:
+                self.nodes[percept.value] = .1
 
-        les = LinearExciteStrategy(.5)
-        les.apply(self.nodes[percept], 1)
+            les = LinearExciteStrategy(.5)
+            les.apply(self.nodes[percept.value], 1)
 
-        self.publish(GLOBAL_BROADCAST_TOPIC, max(self.nodes))
+        logger.info("Publishing msg to topic [{}]".format(GLOBAL_BROADCAST_TOPIC))
+        logger.info("Sending message: {}".format(max(self.nodes)))
+        self.publish(GLOBAL_BROADCAST_TOPIC, CognitiveContent(max(self.nodes)))
 
 class TextAttractorProceduralMemory(ProceduralMemory):
     SCHEMES = {"a": "an amazing adventure",
@@ -115,7 +122,9 @@ class TextAttractorProceduralMemory(ProceduralMemory):
 
     def call(self):
         letter = self.get_next_msg(GLOBAL_BROADCAST_TOPIC)
-        self.publish(CANDIDATE_BEHAVIORS_TOPIC, self.SCHEMES[letter])
+        if letter is not None:
+            msg = self.config.get_param("procedural_memory", letter)
+            self.publish(CANDIDATE_BEHAVIORS_TOPIC, msg)
 
 
 class BasicSensoryMotorMemory(SensoryMotorMemory):
