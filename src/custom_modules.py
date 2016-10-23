@@ -1,8 +1,6 @@
 from time import sleep
 
-from simple_youbot_nav.msg import WheelCommand
 from numpy import average
-from smach import State, StateMachine
 
 from lidapy.framework.msg import built_in_topics, FrameworkTopic
 from lidapy.framework.shared import CognitiveContent
@@ -19,10 +17,10 @@ from lidapy.framework.strategy import LinearExciteStrategy
 from lidapy.util import logger
 from std_msgs.msg import String
 
-from sensor_msgs.msg import LaserScan
 
 # Topic definitions
-TEXTSCAN_TOPIC = FrameworkTopic("/text_attractor/env", String)
+TEXTSCAN_TOPIC = FrameworkTopic("/text_attractor/env/text", String)
+ACTION_TOPIC = FrameworkTopic("/text_attractor/env/action", String)
 DORSAL_STREAM_TOPIC = built_in_topics["dorsal_stream"]
 VENTRAL_STREAM_TOPIC = built_in_topics["ventral_stream"]
 DETECTED_FEATURES_TOPIC = built_in_topics["detected_features"]
@@ -37,17 +35,27 @@ ENVIRONMENT_MODULE = "environment"
 class TextAttractorEnvironment(FrameworkModule):
     def __init__(self, **kwargs):
         super(TextAttractorEnvironment, self).__init__(ENVIRONMENT_MODULE,**kwargs)
+        self.add_publisher(TEXTSCAN_TOPIC)
+        self.add_subscriber(ACTION_TOPIC)
+        self._start = True
 
     @classmethod
     def get_module_name(cls):
         return ENVIRONMENT_MODULE
 
-    def add_publisher(self, topic):
-        super(TextAttractorEnvironment, self).add_publisher(TEXTSCAN_TOPIC)
-
     def call(self):
-        msg = self.config.get_param(ENVIRONMENT_MODULE, "message")
-        self.publish(TEXTSCAN_TOPIC, msg)
+        if self._start:
+            msg = self.config.get_param(ENVIRONMENT_MODULE, "message")
+            self.publish(TEXTSCAN_TOPIC, msg)
+            self._start = False
+            logger.info("Logging from within start")
+        else:
+            msg = self.get_next_msg(ACTION_TOPIC)
+            self.publish(TEXTSCAN_TOPIC, msg)
+
+
+        logger.info("Publishing {} to topic [{}]".format(msg, TEXTSCAN_TOPIC.topic_name))
+
 
 
 class BasicSensoryMemory(SensoryMemory):
@@ -55,8 +63,7 @@ class BasicSensoryMemory(SensoryMemory):
         super(BasicSensoryMemory, self).__init__(**kwargs)
 
     def add_subscribers(self):
-        super(BasicSensoryMemory, self).add_subscribers()
-        super(BasicSensoryMemory, self).add_subscriber(TEXTSCAN_TOPIC)
+        self.add_subscriber(TEXTSCAN_TOPIC)
 
     def get_next_msg(self, topic):
         return super(BasicSensoryMemory, self).get_next_msg(topic)
@@ -67,6 +74,7 @@ class BasicSensoryMemory(SensoryMemory):
     def call(self):
         text = self.get_next_msg(TEXTSCAN_TOPIC)
 
+        logger.info("Recieved {} from topic [{}]".format(text, TEXTSCAN_TOPIC.topic_name))
         if text is not None:
             for x in text.data:
                 self.publish(DETECTED_FEATURES_TOPIC, CognitiveContent(x))
@@ -75,21 +83,27 @@ class TextAttractorWorkspace(Workspace):
 
     def __init__(self, **kwargs):
         super(TextAttractorWorkspace, self).__init__(**kwargs)
-        self.nodes = {"a": .0001}
+        import collections
+        self.nodes = collections.defaultdict(lambda : .1)
 
     def call(self):
         percept = self.get_next_msg(PERCEPTS_TOPIC)
+        logger.info("Recieved {} from topic [{}]".format(percept, PERCEPTS_TOPIC.topic_name))
 
         if percept is not None:
-            if self.nodes[percept.value] is KeyError:
-                self.nodes[percept.value] = .1
-
             les = LinearExciteStrategy(.5)
             les.apply(self.nodes[percept.value], 1)
 
-        logger.info("Publishing msg to topic [{}]".format(GLOBAL_BROADCAST_TOPIC))
-        logger.info("Sending message: {}".format(max(self.nodes)))
-        self.publish(GLOBAL_BROADCAST_TOPIC, CognitiveContent(max(self.nodes)))
+            try:
+                coalition = max(self.nodes)
+            except Exception as e:
+                coalition = ''
+            finally:
+                self.publish(WORKSPACE_COALITIONS_TOPIC, CognitiveContent(coalition))
+
+            logger.info("Publishing {} to topic [{}]".format(coalition, WORKSPACE_COALITIONS_TOPIC.topic_name))
+
+
 
 class TextAttractorProceduralMemory(ProceduralMemory):
     SCHEMES = {"a": "an amazing adventure",
@@ -123,14 +137,14 @@ class TextAttractorProceduralMemory(ProceduralMemory):
     def call(self):
         letter = self.get_next_msg(GLOBAL_BROADCAST_TOPIC)
         if letter is not None:
-            msg = self.config.get_param("procedural_memory", letter)
+            msg = self.config.get_param("procedural_memory", letter.value)
             self.publish(CANDIDATE_BEHAVIORS_TOPIC, msg)
 
 
 class BasicSensoryMotorMemory(SensoryMotorMemory):
     def __init__(self, **kwargs):
         super(BasicSensoryMotorMemory, self).__init__(**kwargs)
-
+        self.add_publisher(ACTION_TOPIC)
 
     def add_publishers(self):
         super(BasicSensoryMotorMemory, self).add_publisher(TEXTSCAN_TOPIC)
@@ -143,4 +157,4 @@ class BasicSensoryMotorMemory(SensoryMotorMemory):
 
     def call(self):
         behavior = self.get_next_msg(SELECTED_BEHAVIORS_TOPIC)
-        self.publish(TEXTSCAN_TOPIC, behavior)
+        self.publish(ACTION_TOPIC, behavior)
