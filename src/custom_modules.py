@@ -36,10 +36,14 @@ ENVIRONMENT_MODULE = "environment"
 
 class TextAttractorEnvironment(FrameworkModule):
     def __init__(self, **kwargs):
-        super(FrameworkModule, self).__init__(ENVIRONMENT_MODULE,**kwargs)
+        super(TextAttractorEnvironment, self).__init__(ENVIRONMENT_MODULE,**kwargs)
+
+    @classmethod
+    def get_module_name(cls):
+        return ENVIRONMENT_MODULE
 
     def add_publisher(self, topic):
-        super(FrameworkModule, self).add_publisher(TEXTSCAN_TOPIC)
+        super(TextAttractorEnvironment, self).add_publisher(TEXTSCAN_TOPIC)
 
     def call(self):
         self.publish(TEXTSCAN_TOPIC, "attract text")
@@ -62,23 +66,22 @@ class BasicSensoryMemory(SensoryMemory):
     def call(self):
         text = self.get_next_msg(TEXTSCAN_TOPIC)
 
-        for x in text:
-            self.publish(DETECTED_FEATURES_TOPIC, CognitiveContent(x))
+        if text is not None:
+            for x in text:
+                self.publish(DETECTED_FEATURES_TOPIC, CognitiveContent(x))
 
-class TextAttractorCSM(CurrentSituationalModel):
+class TextAttractorWorkspace(Workspace):
     nodes = {}
 
-    def receive_add_csm_content_request(self, request):
-        response = super(TextAttractorCSM, self).receive_add_csm_content_request(request)
+    def call(self):
+        percept = self.get_next_msg(PERCEPTS_TOPIC)
+
+        if self.nodes[percept] is KeyError:
+            self.nodes[percept] = .1
 
         les = LinearExciteStrategy(.5)
-        if self.nodes[request] is KeyError:
-            self.nodes[request] = .1
-        les.apply(self.nodes[request], 1)
+        les.apply(self.nodes[percept], 1)
 
-        return response
-
-    def call(self):
         self.publish(GLOBAL_BROADCAST_TOPIC, max(self.nodes))
 
 class TextAttractorProceduralMemory(ProceduralMemory):
@@ -119,7 +122,6 @@ class BasicSensoryMotorMemory(SensoryMotorMemory):
     def __init__(self, **kwargs):
         super(BasicSensoryMotorMemory, self).__init__(**kwargs)
 
-        self.stateMachine = self.create_state_machine()
 
     def add_publishers(self):
         super(BasicSensoryMotorMemory, self).add_publisher(TEXTSCAN_TOPIC)
