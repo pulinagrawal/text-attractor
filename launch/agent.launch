@@ -1,0 +1,11 @@
+<launch>
+    <node name="environment" pkg="text_attractor" type="custom_agent_starter.py" required="true" args="-m action_selection -f $(find text_attractor)/configs/agent.conf"/>
+    <node name="sensory_memory" pkg="text_attractor" type="custom_agent_starter.py" required="true" args="-m sensory_memory -f $(find text_attractor)/configs/agent.conf"/>
+    <node name="perceptual_associative_memory" pkg="text_attractor" type="custom_agent_starter.py" required="true" args="-m perceptual_associative_memory -f $(find text_attractor)/configs/agent.conf"/>
+    <node name="workspace" pkg="text_attractor" type="custom_agent_starter.py" required="true" args="-m workspace -f $(find text_attractor)/configs/agent.conf"/>
+    <node name="current_situational_model" pkg="text_attractor" type="custom_agent_starter.py" required="true" args="-m workspace -f $(find text_attractor)/configs/agent.conf"/>
+    <node name="global_workspace" pkg="text_attractor" type="custom_agent_starter.py" required="true" args="-m global_workspace -f $(find text_attractor)/configs/agent.conf"/>
+    <node name="procedural_memory" pkg="text_attractor" type="custom_agent_starter.py" required="true" args="-m procedural_memory -f $(find text_attractor)/configs/agent.conf"/>
+    <node name="action_selection" pkg="text_attractor" type="custom_agent_starter.py" required="true" args="-m action_selection -f $(find text_attractor)/configs/agent.conf"/>
+    <node name="sensory_motor_memory" pkg="text_attractor" type="custom_agent_starter.py" required="true" args="-m sensory_motor_memory -f $(find text_attractor)/configs/agent.conf"/>
+</launch>
