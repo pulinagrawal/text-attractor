@@ -84,30 +84,28 @@ class TextAttractorWorkspace(Workspace):
     def __init__(self, **kwargs):
         super(TextAttractorWorkspace, self).__init__(**kwargs)
         import collections
-        self.nodes = collections.defaultdict(lambda : .1)
+        self.nodes = collections.defaultdict(lambda : 0)
 
     def call(self):
         percept = self.get_next_msg(PERCEPTS_TOPIC)
 
         if percept is not None:
             logger.info("Recieved {} from topic [{}]".format(percept.value, PERCEPTS_TOPIC.topic_name))
-            les = LinearExciteStrategy(.5)
-            les.apply(self.nodes[percept.value], 1)
-
-            try:
-                coalition = max(self.nodes)
-            except Exception as e:
-                coalition = ''
-            finally:
-                self.publish(WORKSPACE_COALITIONS_TOPIC, CognitiveContent(coalition))
+            les = LinearExciteStrategy(.01)
+            self.nodes[percept.value]= les.apply(self.nodes[percept.value], 1)
 
             for key in self.nodes.keys():
                 logger.info("{}".format(key))
                 logger.info("{0:.2f}".format(self.nodes[key]))
 
-            logger.info("Publishing {} to topic [{}]".format(coalition, WORKSPACE_COALITIONS_TOPIC.topic_name))
-
-
+            try:
+                coalition = max(self.nodes.iterkeys(), key=lambda k: self.nodes[k])
+                logger.info("Max node {}".format(coalition))
+            except Exception as e:
+                coalition = ''
+            finally:
+                logger.info("Publishing {} to topic [{}]".format(coalition, WORKSPACE_COALITIONS_TOPIC.topic_name))
+                self.publish(WORKSPACE_COALITIONS_TOPIC, CognitiveContent(coalition))
 
 class TextAttractorProceduralMemory(ProceduralMemory):
     SCHEMES = {"a": "an amazing adventure",
