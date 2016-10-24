@@ -29,6 +29,7 @@ WORKSPACE_COALITIONS_TOPIC = built_in_topics["workspace_coalitions"]
 GLOBAL_BROADCAST_TOPIC = built_in_topics["global_broadcast"]
 CANDIDATE_BEHAVIORS_TOPIC = built_in_topics["candidate_behaviors"]
 SELECTED_BEHAVIORS_TOPIC = built_in_topics["selected_behaviors"]
+NODES_TOPIC = FrameworkTopic("/text_attractor/nodes", String)
 
 ENVIRONMENT_MODULE = "environment"
 
@@ -47,16 +48,14 @@ class TextAttractorEnvironment(FrameworkModule):
         if self._start:
             msg = self.config.get_param(ENVIRONMENT_MODULE, "message")
             self.publish(TEXTSCAN_TOPIC, msg)
-            self._start = False
+            logger.info("Publishing {} to topic [{}]".format(msg, TEXTSCAN_TOPIC.topic_name))
             logger.info("Logging from within start")
-        else:
-            msg = self.get_next_msg(ACTION_TOPIC)
-            self.publish(TEXTSCAN_TOPIC, msg)
-
-
-        logger.info("Publishing {} to topic [{}]".format(msg, TEXTSCAN_TOPIC.topic_name))
-
-
+        msg = self.get_next_msg(ACTION_TOPIC)
+        if msg is not None:
+            if msg.data is not '':
+                self._start = False
+                logger.info("Publishing {} to topic [{}]".format(msg, TEXTSCAN_TOPIC.topic_name))
+                self.publish(TEXTSCAN_TOPIC, msg)
 
 class BasicSensoryMemory(SensoryMemory):
     def __init__(self, **kwargs):
@@ -77,6 +76,7 @@ class BasicSensoryMemory(SensoryMemory):
         logger.info("Recieved {} from topic [{}]".format(text, TEXTSCAN_TOPIC.topic_name))
         if text is not None:
             for x in text.data:
+                logger.info("Publishing CognitiveContent({}) to topic [{}]".format(x, DETECTED_FEATURES_TOPIC.topic_name))
                 self.publish(DETECTED_FEATURES_TOPIC, CognitiveContent(x))
 
 class TextAttractorWorkspace(Workspace):
@@ -88,9 +88,9 @@ class TextAttractorWorkspace(Workspace):
 
     def call(self):
         percept = self.get_next_msg(PERCEPTS_TOPIC)
-        logger.info("Recieved {} from topic [{}]".format(percept, PERCEPTS_TOPIC.topic_name))
 
         if percept is not None:
+            logger.info("Recieved {} from topic [{}]".format(percept.value, PERCEPTS_TOPIC.topic_name))
             les = LinearExciteStrategy(.5)
             les.apply(self.nodes[percept.value], 1)
 
@@ -100,6 +100,10 @@ class TextAttractorWorkspace(Workspace):
                 coalition = ''
             finally:
                 self.publish(WORKSPACE_COALITIONS_TOPIC, CognitiveContent(coalition))
+
+            for key in self.nodes.keys():
+                logger.info("{}".format(key))
+                logger.info("{0:.2f}".format(self.nodes[key]))
 
             logger.info("Publishing {} to topic [{}]".format(coalition, WORKSPACE_COALITIONS_TOPIC.topic_name))
 
@@ -137,8 +141,10 @@ class TextAttractorProceduralMemory(ProceduralMemory):
     def call(self):
         letter = self.get_next_msg(GLOBAL_BROADCAST_TOPIC)
         if letter is not None:
-            msg = self.config.get_param("procedural_memory", letter.value)
-            self.publish(CANDIDATE_BEHAVIORS_TOPIC, msg)
+            if letter.value is not None:
+                msg = self.config.get_param("procedural_memory", letter.value)
+                logger.info("Publishing {} to topic [{}]".format(msg, CANDIDATE_BEHAVIORS_TOPIC.topic_name))
+                self.publish(CANDIDATE_BEHAVIORS_TOPIC, msg)
 
 
 class BasicSensoryMotorMemory(SensoryMotorMemory):
