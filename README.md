@@ -3,3 +3,8 @@
 This is a lidapy (https://github.com/CognitiveComputingResearchGroup/lidapy-framework) based agent. This agent senses its environment for a piece of text and puts a piece of text in the environment based on the features of the text it read.
 
 Follow the instructions for running a lidapy agent located at the lidapy-framework repository to run this agent.
+
+Recommended:
+    Clone the agent in the <LIDA_WORKSPACE>/src/ folder
+    Rename to text_attractor. (Naming convention in ROS is _ between words)
+   
