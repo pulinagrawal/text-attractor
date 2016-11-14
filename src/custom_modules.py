@@ -56,6 +56,7 @@ class TextAttractorEnvironment(FrameworkModule):
                 self._start = False
                 logger.info("Publishing {} to topic [{}]".format(msg, TEXTSCAN_TOPIC.topic_name))
                 self.publish(TEXTSCAN_TOPIC, msg)
+                print(msg)
 
 class BasicSensoryMemory(SensoryMemory):
     def __init__(self, **kwargs):
